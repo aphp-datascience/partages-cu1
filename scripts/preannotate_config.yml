@@ -1,0 +1,154 @@
+preannotate:
+  input_path: "data/2025-11-17-preliminary_version_output_CU1"
+  output_path: "data/preannotation/2025-11-17-preliminary_version_output_CU1/"
+  uima_output_path: "data/preannotation/2025-11-17-preliminary_version_output_CU1_uima/"
+
+  api_url: "https://api.mistral.ai/v1/"
+  model: "mistral-large-2512"
+  project_name: "PARTAGES_CU1_PSEUDONYMISATION"
+  project_slug: "admin-3"
+  drop_ratio: 0.05
+  seed: 42
+  max_few_shot_examples: 3
+  max_concurrent_requests: 10
+  temperature: 0.0
+  min_words_per_chunk: 80
+  remove_pseudo_antipatterns: true
+  few_shot_examples:
+    - "Patiente Madame <prenom>Isabelle</prenom> <nom>Hijdani</nom> en J1, 48 ans, (IPP <id_ipp>420110301</id_ipp>),\na été traitée il y a 3 ans à ses 45 ans par Pr. <prenom_soignant>L.</prenom_soignant> <nom_soignant>Tourgant</nom_soignant> et revue ce mardi <date_absolue>31/12</date_absolue> sur IRM (mis en place en <date_absolue_generale>2023</date_absolue_generale>, importée d'<pays_autre>Allemagne</pays_autre>)"
+    - "Son frère est malade depuis 3 jours.\nStandard téléphonique du CHU d'<ville_hopital>Hendaye</ville_hopital>: <tel_hopital>01 39 29 20 11</tel_hopital>. Patient (numéro secu n°<id_nss>1 74 03 30 007 058</id_nss>) né le <date_naissance>quinze mai mille neuf cent quatre vingt dix huit</date_naissance> à <ville>New York</ville> aux <pays>Etats-Unis</pays>."
+    - "En <date_absolue>2009</date_absolue>, Madame <nom>Duverny</nom> patiente vivant au <adresse>25 rue traversière</adresse> (<ville>Paris</ville>), s'est rendue au CHU d'<ville_hopital>Anger</ville_hopital> (<zip_hopital>39202</zip_hopital>).\nSa soeur <prenom_autre>Émilie</prenom_autre>, avocate fiscaliste, est décedée en <date_absolue>2007</date_absolue>, peu de temps avant les élections présentidentielles de <date_globale>2008</date_globale>."
+
+  prompt_text: |-
+    Tu es un assistant d’extraction d'entités identifiantes dans des compte-rendus médicaux basé sur une approche par labellisation Markdown.
+    Pour chaque morceau de compte-rendu fourni par l’utilisateur, tu dois réécrire le texte complet mot à mot, en entourant les entités identifiantes avec des liens markdown.
+
+    Tu dois suivre strictement les règles suivantes :
+    - Tu dois uniquement utiliser les labels fournis. N’en invente pas de nouveau.
+    - Tu dois respecter exactement le texte original : ne le modifie pas, ajoute seulement des liens.
+    - Tu dois toujours fermer chaque lien que tu ouvres.
+    - Si un texte ne contient aucune information à extraire, tu dois le renvoyer tel quel.
+    - Sois cohérent dans tes réponses, des requêtes similaires doivent mener à des réponses similaires : applique les mêmes règles de manière déterministe à chaque requête.
+    - N’ajoute aucun commentaire ni aucune explication : ré-écris seulement le texte avec les balises.
+    - Les balises ne doivent pas inclure d’espace initial ou final, ni de ponctuation adjacente (virgule, point, parenthèses, etc.).
+    - Pour les dates, les déterminants adjacents comme « le », « en », « depuis » ne doivent pas être inclus dans les entités.
+
+    Les entités que tu dois absolument annoter sur le texte d'origine sont décrites avec les entités suivantes :
+
+    Noms / prénoms
+    - (prenom) : Le prénom du patient
+    - (nom) : Le nom de famille du patient (sans "Monsieur" ou "Madame" !)
+    - (prenom_soignant) : Le prénom d’un soignant (médecin, chirurgien, infirmier, …)
+    - (nom_soignant) : Le nom de famille d’un soignant
+    - (prenom_autre) : Le prénom d’une autre personne (parent, ami, collègue, …)
+    - (nom_autre) : Le nom de famille d’une autre personne
+
+    Statut / identité du patient
+    - (statut_familial_patient) : Le statut familial ou marital du patient (ex. « marié », « célibataire », « veuf », « divorcé »). Ne pas utiliser pour annoter les membres de la famille, donc ni "père", ni "mère", etc !
+    - (metier_ou_statut_patient) : Métier ou statut social : « ouvrier », « retraité », « étudiant », « sans emploi », etc.)
+    - (nationalite_patient) : La nationalité du patient (ex. « française », « algérienne », « italienne »)
+
+    Dates
+    - (date_naissance) : La date de naissance (ou l'année de naissance) du patient
+    - (date_absolue) : Une date absolue (ou l'année, ou intervalle), autre que la naissance (procédure, admission, hospitalisation, opération, début de symptômes, etc.) pour le patient ou quelqu’un d’autre. Ne pas annoter les dates relatives comme "il y a deux mois", ni "depuis 4 jours" ni "J2" !
+    - (date_absolue_generale) : Une date absolue (ou l'année) non identifiante, comme la date d’installation d’une machine, la date de promulgation d’une loi, etc.
+
+    Codes identifiants : Tout code ou numéro identifiant personnel lié à la pratique médicale ou hospitalière:
+    - (id_ipp) : Identifiant Patient Permanent (aussi appelé NIP)
+    - (id_iep) : Identifiant d’Épisode Patient (aussi appelé NDA, Numéro de Dossier Administratif)
+    - (id_nss) : Numéro de Sécurité Sociale (ex: "1 74 03 30 007 058")
+    - (id_nir) : Numéro d’Inscription au Répertoire
+    - (id_nia) : Numéro d’Inscription en Attente (notamment pour les greffes)
+    - (id_ins) : Identité Nationale de Santé (assez rare, sauf si c'est marqué explicitement)
+    - (id_autre) : Autre identifiant relatif au patient ou à sa prise en charge
+
+    Localisation
+    - (adresse) : L’adresse postale du patient (numéro et nom de rue, éventuellement compléments : bâtiment, résidence, service, etc.)
+    - (adresse_hopital) : L’adresse d’un établissement ou service hospitalier
+    - (adresse_autre) : Toute autre adresse (par exemple adresse d’un tiers, employeur, etc.)
+
+    - (ville) : Une ville (et arrondissement éventuel) en lien avec le patient (logement, voyage, ancien ville avant immigration, etc hors prise en charge médicale)
+    - (ville_hopital) : Une ville (et arrondissement éventuel) en lien avec une prise en charge médicale du patient
+    - (ville_autre) : Une ville (et arrondissement éventuel) sans lien avec le patient (ville d'un membre de la famille, ou ville d'import d'une machine, ou d'un médecin, etc.)
+
+    - (zip) : Un code postal d'une adresse en lien avec patient
+    - (zip_hopital) : Un code postal de l’adresse d’un établissement ou service hospitalier en lien avec la prise en charge du patient
+    - (zip_autre) : Un code postal sans lien avec le patient
+
+    - (pays) : Un pays en lien avec le sujet/patient, hors prise en charge médicale (par exemple lors d'un voyage, ou l'ancien pays avant immigration, etc)
+    - (pays_hopital) : Un pays en lien avec une prise en charge médicale du sujet/patient
+    - (pays_autre) : Un pays sans lien avec le sujet/patient (pays d'un membre de la famille, ou pays d'import d'une machine, ou pays d'un médecin, etc.)
+
+    Contact
+    - (mail) : L’adresse mail du patient
+    - (mail_soignant) : L’adresse mail d’un soignant (médecin, chirurgien, infirmier, etc.)
+    - (mail_hopital) : L’adresse mail d’un service ou établissement hospitalier
+    - (mail_autre) : Toute autre adresse mail (famille, employeur, etc.)
+
+    - (tel) : Le numéro de téléphone ou fax du sujet/patient
+    - (tel_soignant) : Le numéro de téléphone ou fax d’un soignant
+    - (tel_hopital) : Le numéro de téléphone ou fax d’un service ou établissement hospitalier
+    - (tel_autre) : Tout autre numéro de téléphone ou fax (famille, employeur, etc.)
+
+    - (url) : Tout lien vers un site internet ou une ressource en ligne (URL complète)
+
+    Exemple :
+    Requête utilisateur : "On opère Rémi, né le 15 aout."
+    Réponse de l’assistant : "On opère [Rémi](prenom), né le [15 aout](date_naissance)."
+    (Note comment l’assistant répond en utilisant le même texte original que l’utilisateur)
+
+    Les seules entités que tu peux annoter sont les suivantes: prenom, nom, prenom_soignant, nom_soignant, prenom_autre, nom_autre, statut_familial_patient, metier_ou_statut_patient, nationalite_patient, date_naissance, date_absolue, date_absolue_generale, id_ipp, id_iep, id_nss, id_nir, id_nia, id_ins, id_autre, adresse, adresse_hopital, adresse_autre, ville, ville_hopital, ville_autre, zip, zip_hopital, zip_autre, pays, pays_hopital, pays_autre, mail, mail_soignant, mail_hopital, mail_autre, tel, tel_soignant, tel_hopital, tel_autre, url.
+
+  entity_mapping:
+    prenom: {Categorie: "Prenom", RolePER: "Patient"}
+    nom: {Categorie: "Nom", RolePER: "Patient"}
+    prenom_patient: {Categorie: "Prenom", RolePER: "Patient"}
+    nom_patient: {Categorie: "Nom", RolePER: "Patient"}
+    prenom_soignant: {Categorie: "Prenom", RolePER: "PersonnelSante"}
+    nom_soignant: {Categorie: "Nom", RolePER: "PersonnelSante"}
+    prenom_autre: {Categorie: "Prenom", RolePER: "Autre"}
+    nom_autre: {Categorie: "Nom", RolePER: "Autre"}
+    statut_familial_patient: {Categorie: "SituationFamiliale"}
+    metier_ou_statut_patient: {Categorie: "IdentiteSocialePatient"}
+    nationalite_patient: {Categorie: "NationalitePatient"}
+    date_naissance: {Categorie: "DateNaissancePatient"}
+    date_absolue: {Categorie: "DateIdentifiante"}
+    date_absolue_generale: {Categorie: "DateNonIdentifiante"}
+    id_ipp: {Categorie: "CodeIdentifiant", CodeType: "NIPouIPP"}
+    id_iep: {Categorie: "CodeIdentifiant", CodeType: "INS"}
+    id_nss: {Categorie: "CodeIdentifiant", CodeType: "NSS"}
+    id_nir: {Categorie: "CodeIdentifiant", CodeType: "NIR"}
+    id_nia: {Categorie: "CodeIdentifiant", CodeType: "NIA"}
+    id_ins: {Categorie: "CodeIdentifiant", CodeType: "INS"}
+    id_autre: {Categorie: "CodeIdentifiant", CodeType: "AUTRE"}
+    adresse: {Categorie: "Adresse", RoleLOC: "Patient"}
+    adresse_hopital: {Categorie: "Adresse", RoleLOC: "Hopital"}
+    adresse_autre: {Categorie: "Adresse", RoleLOC: "Autre"}
+    ville: {Categorie: "Ville", RoleLOC: "Patient"}
+    ville_hopital: {Categorie: "Ville", RoleLOC: "Hopital"}
+    ville_autre: {Categorie: "Ville", RoleLOC: "Autre"}
+    zip: {Categorie: "CodePostal", RoleLOC: "Patient"}
+    zip_hopital: {Categorie: "CodePostal", RoleLOC: "Hopital"}
+    zip_autre: {Categorie: "CodePostal", RoleLOC: "Autre"}
+    pays: {Categorie: "Pays", RoleLOC: "Patient"}
+    pays_hopital: {Categorie: "Pays", RoleLOC: "Hopital"}
+    pays_autre: {Categorie: "Pays", RoleLOC: "Autre"}
+    mail: {Categorie: "AdresseEmail", RoleNUM: "Patient"}
+    mail_soignant: {Categorie: "AdresseEmail", RoleNUM: "PersonnelSante"}
+    mail_hopital: {Categorie: "AdresseEmail", RoleNUM: "Hopital"}
+    mail_autre: {Categorie: "AdresseEmail", RoleNUM: "Autre"}
+    tel: {Categorie: "NumeroTelephone", RoleNUM: "Patient"}
+    tel_soignant: {Categorie: "NumeroTelephone", RoleNUM: "PersonnelSante"}
+    tel_hopital: {Categorie: "NumeroTelephone", RoleNUM: "Hopital"}
+    tel_autre: {Categorie: "NumeroTelephone", RoleNUM: "Autre"}
+    url: {Categorie: "Url", RoleLOC: "Autre"}
+
+  entity_type_definition:
+    "webanno.custom.EntiteAnonymisation":
+      "%NAME": "webanno.custom.EntiteAnonymisation"
+      "%SUPER_TYPE": "uima.tcas.Annotation"
+      Categorie: {"%NAME": "Categorie", "%RANGE": "uima.cas.String"}
+      CodeType: {"%NAME": "CodeType", "%RANGE": "uima.cas.String"}
+      RoleLOC: {"%NAME": "RoleLOC", "%RANGE": "uima.cas.String"}
+      RoleNUM: {"%NAME": "RoleNUM", "%RANGE": "uima.cas.String"}
+      RolePER: {"%NAME": "RolePER", "%RANGE": "uima.cas.String"}
